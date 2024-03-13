@@ -1,4 +1,4 @@
-package input
+package parse
 
 import (
 	"github.com/projectdiscovery/goflags"
