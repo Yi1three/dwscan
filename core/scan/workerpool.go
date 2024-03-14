@@ -2,6 +2,8 @@ package scan
 
 import (
 	"sync"
+	"fmt"
+	"github.com/PuerkitoBio/goquery"
 )
 
 type Task struct {
@@ -66,4 +68,58 @@ func InitWorkerPool(function func(interface{}) interface{}, args []interface{}, 
 		}
 	}
 	return pool
+}
+func ExtractFormsFromHTML(html string) ([]map[string]interface{}, error) {
+	var forms []map[string]interface{}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse HTML: %v", err)
+	}
+
+	doc.Find("form").Each(func(i int, selection *goquery.Selection) {
+		form := make(map[string]interface{})
+		form["action"], _ = selection.Attr("action")
+
+		selection.Find("input, textarea, select").Each(func(j int, input *goquery.Selection) {
+			name, exists := input.Attr("name")
+			if exists {
+				value, exists := input.Attr("value")
+				if exists {
+					form[name] = value
+				} else {
+					form[name] = ""
+				}
+			}
+		})
+
+		forms = append(forms, form)
+	})
+
+	return forms, nil
+}
+
+func (wp *WorkerPool) FormExtractor(url string) Task {
+	return Task{
+		Func: func(arg interface{}) interface{} {
+			resp, err := http.Get(arg.(string)) // 假设这是一个有效的GET请求
+			if err != nil {
+				return nil, err
+			}
+			defer resp.Body.Close()
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+
+		.forms, err := ExtractFormsFromHTML(string(body))
+			if err != nil {
+				return nil, err
+			}
+
+			return forms, nil
+		},
+		Args: url,
+	}
 }
