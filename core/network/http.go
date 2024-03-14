@@ -25,7 +25,36 @@ type Response struct {
 	RequestUrl string
 }
 
-func Send(request *Request) (*Response, error) {
+// GET就用这个得了
+func NewGETRequest(url string, redirect bool, headers map[string]string) *Request {
+	if headers == nil {
+		headers = make(map[string]string)
+	}
+
+	return &Request{
+		Url:      url,
+		Method:   "GET",
+		Data:     "",
+		Redirect: redirect,
+		Headers:  headers,
+	}
+}
+
+func NewRequest(url string, method string, data string, redirect bool, headers map[string]string) *Request {
+	if headers == nil {
+		headers = make(map[string]string)
+	}
+
+	return &Request{
+		Url:      url,
+		Method:   method,
+		Data:     data,
+		Redirect: redirect,
+		Headers:  headers,
+	}
+}
+
+func (request *Request) Send() (*Response, error) {
 	//TODO 支持代理
 
 	client := &http.Client{
@@ -75,9 +104,14 @@ func Send(request *Request) (*Response, error) {
 
 	tmpLocation, err := response.Location()
 	if err != nil {
-		return nil, err
+		if err == http.ErrNoLocation {
+			location = ""
+		} else {
+			return nil, err
+		}
+	} else {
+		location = tmpLocation.String()
 	}
-	location = tmpLocation.String()
 
 	return &Response{response.Status, response.Header, body, location, request.Url}, nil
 }
